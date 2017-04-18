@@ -4,6 +4,7 @@
 #include "iRRAM/lib.h"
 #include "iRRAM/core.h"
 #include "polynomial.h"
+#include "complexmatrix.h"
 
 #include <utility>
 using namespace iRRAM;
@@ -36,7 +37,7 @@ REALMATRIX concat(REALMATRIX , REALMATRIX );
 //********************************************//
 POLYNOMIAL charPoly(REALMATRIX );
 POLYNOMIAL charPoly(REALMATRIX , bool );
-
+POLYNOMIAL HermitianCharPoly(COMPLEXMATRIX);
 
 //********************************************//
 // X = linearSys(A, B)                        //
@@ -97,6 +98,7 @@ REALMATRIX diagonalizeTrisection(REALMATRIX , int );
 REALMATRIX diagonalizeNewton(REALMATRIX , int );
 REALMATRIX diagonalizeCombined(REALMATRIX , int );
 REALMATRIX diagonalizeBounded(REALMATRIX , int );
+COMPLEXMATRIX HermitianDiagonalizeBounded(COMPLEXMATRIX , int );
 
 //********************************************//
 // [P,v] = dianomalize(A, k)                  //
@@ -115,9 +117,16 @@ std::vector<std::pair< REALMATRIX, REAL> >
 diagonalizeCombinedEig(REALMATRIX , int );
 std::vector<std::pair< REALMATRIX, REAL> > 
 diagonalizeBoundedEig(REALMATRIX , int );
+std::vector<std::pair< COMPLEXMATRIX, REAL> > 
+HermitianDiagonalizeBoundedEig(COMPLEXMATRIX , int );
 
 // Offer a transpose matrix
 REALMATRIX transpose(REALMATRIX );
+
+// Offer a transpose matrix
+COMPLEXMATRIX transpose(COMPLEXMATRIX );
+
+
 
 // Return a random orthogonal matrix 
 // where the distribution over a orthogonal matrix group is a Haar measure: uniform measure.

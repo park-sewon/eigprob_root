@@ -1,5 +1,6 @@
 #include "../include/linsys.h"
 #include "../include/polynomialroot.h"
+#include "../include/complexmatrix.h"
 #include "../include/utilities.h"
 #include "iRRAM/lib.h"
 #include "iRRAM/core.h"
@@ -22,6 +23,14 @@ REAL trace(REALMATRIX mat)
 	return tr;
 }
 
+
+REAL trace(COMPLEXMATRIX mat)
+{
+	COMPLEX tr = 0;
+	for (int i=0; i<(int)mat.maxrow; i++)
+		tr += mat(i,i);
+	return tr;
+}
 
 REALMATRIX power(REALMATRIX mat, int k)
 {
@@ -75,6 +84,32 @@ REALMATRIX concat(REALMATRIX A, REALMATRIX B)
 	return M;
 }
 
+COMPLEXMATRIX concat(COMPLEXMATRIX A, COMPLEXMATRIX B)
+{
+	if(A.maxrow == 0)
+		return B;
+	if(B.maxrow == 0)
+		return A;
+	
+	COMPLEXMATRIX M(A.maxrow, A.maxcolumn + B.maxcolumn);
+	for(int r = 0; r<(int)A.maxrow; r++)
+	{
+		for(int c = 0; c<(int)A.maxcolumn+(int)B.maxcolumn; c++)
+		{
+			if (c<(int)A.maxcolumn)
+			{
+				M(r,c) = A(r,c);
+			}
+			else
+			{
+				M(r,c) = B(r,c-A.maxcolumn);
+			}
+		}
+	}
+	return M;
+}
+
+
 REAL inner(REALMATRIX u, REALMATRIX v)
 {
 	assert(u.maxrow == v.maxrow);
@@ -121,6 +156,66 @@ REALMATRIX GramSchmidt(REALMATRIX M)
 {
 	REALMATRIX Q;
 	REALMATRIX v;
+	for(int i=0; i<(int) M.maxcolumn; i++)
+	{
+		v = colVector(M,i);
+		for(int j=0; j < i; j++)
+		{
+			v = v - projection(colVector(Q, j), colVector(M, i)); 
+		}
+		v = v /sqrt(inner(v,v));
+		Q = concat(Q, v);
+	}
+	return Q;
+}
+
+
+COMPLEXMATRIX inner(COMPLEXMATRIX u, COMPLEXMATRIX v)
+{
+	assert(u.maxrow == v.maxrow);
+	assert(u.maxcolumn == 1);
+	assert(v.maxcolumn == 1);
+
+	REAL sum = 0;
+	for(int i=0; i<(int)u.maxrow; i++)
+	{
+		sum += u(i,0) * v(i,0);
+	}
+	return sum;
+}
+
+COMPLEXMATRIX colVector(COMPLEXMATRIX u, int idx)
+{
+	COMPLEXMATRIX v = COMPLEXMATRIX(u.maxrow, 1);
+	for (int i=0; i<(int) u.maxrow; i++)
+	{
+		v(i,0) = u(i,idx);
+	}
+	return v;
+
+}
+
+REALMATRIX colVector(COMPLEXMATRIX u, int r, int c)
+{
+	COMPLEXMATRIX v = COMPLEXMATRIX(u.maxrow - r, 1);
+	for (int i=r; i<(int) u.maxrow; i++)
+	{
+		v(i,0) = u(i,c);
+	}
+	return v;
+
+}
+
+COMPLEXMATRIX projection(COMPLEXMATRIX u, COMPLEXMATRIX v)
+{
+	return u * (inner(v,u)/inner(u,u));
+}
+
+// Orthonormalize columnvectors of M
+COMPLEXMATRIX GramSchmidt(COMPLEXMATRIX M)
+{
+	COMPLEXMATRIX Q;
+	COMPLEXMATRIX v;
 	for(int i=0; i<(int) M.maxcolumn; i++)
 	{
 		v = colVector(M,i);
@@ -230,6 +325,33 @@ POLYNOMIAL traceFormulae(REALMATRIX M)
 	return P;
 }
 
+POLYNOMIAL HermitianTraceFormulae(COMPLEXMATRIX M)
+{
+	REAL coef[M.maxcolumn +1];
+	int n = (int)M.maxcolumn;
+	coef[n] = 1;
+	REAL T[n];
+	COMPLEXMATRIX tmp = M;
+	for(int k=0; k< n; k++)
+	{
+		T[k] = real(trace(tmp));
+		tmp =  tmp * M;
+	}
+	for(int k=0; k<n; k++)
+	{
+		for(int i=0; i< k+1; i++)
+		{
+			coef[n-k-1] += T[k-i]*coef[n-i];
+		}
+		coef[n-k-1] *= -1;
+		coef[n-k-1] /= (k+1);
+	}
+
+	POLYNOMIAL P = POLYNOMIAL(n, coef);
+	return P;
+}
+
+
 
 REAL determinant(REALMATRIX M)
 {
@@ -272,7 +394,6 @@ REAL determinant(REALMATRIX M)
 		det *= W(i,i);
 	return det;
 }
-
 
 REAL rootBound(REALMATRIX M)
 {
@@ -324,6 +445,13 @@ POLYNOMIAL charPoly(REALMATRIX M)
 {
 	return traceFormulae(M);
 }
+
+
+POLYNOMIAL HermitianCharPoly(COMPLEXMATRIX M)
+{
+	return HermitianTraceFormulae(M);
+}
+
 
 POLYNOMIAL charPoly(REALMATRIX M, bool t)
 {
@@ -471,6 +599,135 @@ REALMATRIX eigenVector(REALMATRIX A, REAL eigenValue, int nulldim)
 
 
 	REALMATRIX B = REALMATRIX(ROW,nulldim);
+	for(int i=0; i<COL - rank; i++)
+	{
+		for(int j=0; j<rank; j++)
+		{
+			B(record[j],i) =  solutionMatrix(j,i);
+		}
+		for (int k=0; k<COL - rank; k++)
+		{
+			if(i == k)
+				B(record[rank + k], i) =  REAL(-1);
+			else
+				B(record[rank + k], i) =  REAL(0);
+		}
+	}
+	B = GramSchmidt(B);
+
+	return B;
+}
+
+
+COMPLEXMATRIX eigenVector(COMPLEXMATRIX A, COMPLEX eigenValue, int nulldim)
+{
+
+	REAL max;
+	COMPLEX pivotvalue, scale, temp;
+	int i,j,k, temp_index, flg, ROW, COL;
+	int pivoti = 0;
+	int pivotj = 0;
+	ROW =  (int)A.maxrow;
+	COL = (int)A.maxcolumn;
+	int rank = ROW - nulldim;
+	
+	COMPLEXMATRIX solutionMatrix = COMPLEXMATRIX(rank, COL - rank);
+	COMPLEX tmpV;
+
+	for (int i=0; i<COL; i++)
+	{
+		A(i,i) = A(i,i) - eigenValue;
+	}
+
+	int record[COL];
+    for (int i=0; i<COL; i++) record[i] = i;
+
+
+	for (i=0; i < rank; i++)
+	{
+
+		max = 0;
+		for(int ti = i; ti < ROW; ti ++)
+		{
+			for(int tj = i; tj <COL; tj ++)
+			{
+				max = maximum(abs(A(ti,tj)), max);
+			}
+		}
+
+		flg = 0;
+    	for (k=i; k<COL; k++)
+    	{
+    		for (j=i; j<ROW; j++)
+    		{
+
+    			if(1==choose(abs(A(j,k)) > max / 2, abs(A(j,k)) < max))
+    			{
+					pivotvalue = A(j,k);
+    				pivoti = j;
+    				pivotj = k;	
+    				flg = 1;
+    				break;
+    			}
+    		}
+    		if (flg==1) break;
+    	}
+
+    	if (pivoti != i)
+    	{
+			for(int tc=0; tc<(int)A.maxcolumn; tc++)
+			{
+				tmpV = A(i,tc);
+				A(i,tc) = A(pivoti,tc);
+				A(pivoti,tc) = tmpV;
+			}
+    	}
+
+		if (pivotj != i)
+		{
+			
+			for(int tc=0; tc<(int)A.maxrow; tc++)
+			{
+				tmpV = A(tc,i);
+				A(tc,i) = A(tc,pivotj);
+				A(tc,pivotj) = tmpV;
+			}
+            temp_index = record[i];
+            record[i] = record[pivotj];
+            record[pivotj] = temp_index;
+		}
+
+		for(int tc=0; tc<(int)A.maxcolumn; tc++)
+		{
+			A(i,tc) = A(i,tc) / pivotvalue;
+		}
+
+		for (j=0; j<ROW; j++) 
+		{
+			if (j == i)
+				continue;
+			scale = A(j,i);
+			
+
+			for(int tc=0; tc<(int)A.maxcolumn; tc++)
+			{
+				A(j,tc) = A(j,tc) - scale*A(i,tc);
+			}
+		}
+	}
+
+
+	// copy ** to solution matrix. 
+	for(i = 0; i<rank; i++)
+	{
+		for(j=0; j<COL - rank; j++)
+		{
+			solutionMatrix(i,j) = A(i,j + rank);
+		}
+	}
+
+
+	COMPLEXMATRIX B = COMPLEXMATRIX(ROW,nulldim);
 	for(int i=0; i<COL - rank; i++)
 	{
 		for(int j=0; j<rank; j++)
@@ -684,6 +941,43 @@ REALMATRIX diagonalizeBounded(REALMATRIX M, int d)
 	return Q;
 }
 
+COMPLEXMATRIX HermitianDiagonalizeBounded(COMPLEXMATRIX M, int d)
+{
+	assert(M.maxcolumn == M.maxrow);
+
+	clock_t begin_time = clock();
+	POLYNOMIAL P = HermitiantraceFormulae(M);
+	TIME_CHAR_POLYNOMIAL = float( clock () - begin_time ) /  CLOCKS_PER_SEC;
+
+	begin_time = clock();
+	std::vector<std::pair<REAL,int> > roots = RealRootFindingBounded(P, d);
+	TIME_ROOT_FINDING =  float( clock () - begin_time ) /  CLOCKS_PER_SEC;
+  	
+
+  	COMPLEXMATRIX m;
+	COMPLEXMATRIX Q;
+  	REAL eigenVal;
+
+	if (roots[0].second == M.maxcolumn)
+	{
+		Q =  COMPLEXMATRIX(M.maxcolumn, M.maxcolumn);
+		for (int i=0; i<M.maxcolumn; i++)
+			Q(i,i) = 1;
+		return Q;
+  	}
+
+ 	begin_time = clock();	
+	for (int i =0; i<(int)roots.size(); i++)
+	{	
+		m = eigenVector(M, roots[i].first, roots[i].second);
+		Q = concat(m,Q);
+	}
+	TIME_GAUSSIAN_ELIMINATION = float( clock () - begin_time ) /  CLOCKS_PER_SEC;
+
+	return Q;
+}
+
+
 
 REALMATRIX transpose(REALMATRIX M)
 {
@@ -693,6 +987,16 @@ REALMATRIX transpose(REALMATRIX M)
 			N(i,j) = M(j,i);
 	return N;
 }
+
+COMPLEXMATRIX transpose(COMPLEXMATRIX M)
+{
+	COMPLEXMATRIX N =COMPLEXMATRIX(M.maxcolumn, M.maxrow);
+	for(int i=0; i < (int)M.maxcolumn; i++)
+		for(int j=0; j < (int)M.maxrow; j++)
+			N(i,j) = M(j,i);
+	return N;
+}
+
 
 REALMATRIX basisVector(int i, int n)
 {
@@ -1025,6 +1329,47 @@ diagonalizeBoundedEig(REALMATRIX M, int d)
 	for (int i =0; i<(int)roots.size(); i++)
 	{	
 		ans.push_back(std::pair<REALMATRIX, REAL>(eigenVector(M, roots[i].first, roots[i].second),roots[i].first));
+	}
+	TIME_GAUSSIAN_ELIMINATION = float( clock () - begin_time ) /  CLOCKS_PER_SEC;
+
+	return ans;
+}
+
+
+std::vector<std::pair< COMPLEXMATRIX, REAL> > 
+HermitianDiagonalizeBoundedEig(COMPLEXMATRIX M, int d)
+{
+	assert(M.maxcolumn == M.maxrow);
+
+	clock_t begin_time = clock();
+	POLYNOMIAL P = HermitianTraceFormulae(M);
+	TIME_CHAR_POLYNOMIAL = float( clock () - begin_time ) /  CLOCKS_PER_SEC;
+
+	begin_time = clock();
+	std::vector<std::pair<REAL,int> > roots = RealRootFindingBounded(P, d);
+	TIME_ROOT_FINDING =  float( clock () - begin_time ) /  CLOCKS_PER_SEC;
+  	
+  	std::vector<std::pair< REALMATRIX, REAL> > ans; 	
+  	COMPLEXMATRIX m;
+	COMPLEXMATRIX Q;
+  	REAL eigenVal;
+
+	if (roots[0].second == M.maxcolumn)
+	{
+		Q =  COMPLEXMATRIX(M.maxcolumn, M.maxcolumn);
+		for (int i=0; i<M.maxcolumn; i++)
+			Q(i,i) = 1;
+	
+		ans.push_back(std::pair<COMPLEXMATRIX, REAL>(Q,roots[0].first));
+
+
+		return ans;
+  	}
+
+ 	begin_time = clock();	
+	for (int i =0; i<(int)roots.size(); i++)
+	{	
+		ans.push_back(std::pair<COMPLEXMATRIX, REAL>(eigenVector(M, roots[i].first, roots[i].second),roots[i].first));
 	}
 	TIME_GAUSSIAN_ELIMINATION = float( clock () - begin_time ) /  CLOCKS_PER_SEC;
 

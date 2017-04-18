@@ -360,10 +360,6 @@ RealDistinctRootSeparationBounded(POLYNOMIAL P, int distinct)
 
 	RATIONAL epsilon = D.radius / 2 / distinct;
 
-
-	std::queue<RATIONALINTERVAL > Q1;
-	Q1.push(D);
-
     std::priority_queue<std::pair<RATIONALINTERVAL, int> , std::vector<std::pair<RATIONALINTERVAL, int> >, wider> Q0;
 
 	int k;
@@ -374,21 +370,7 @@ RealDistinctRootSeparationBounded(POLYNOMIAL P, int distinct)
 	std::vector<std::pair<RATIONALINTERVAL, int> > solutionDiscs;
 	solutionDiscs.reserve(P.degree);
 
-	// while(!Q1.empty())
-	// {
-	// 	RATIONALINTERVAL a = Q1.front();
-	// 	Q1.pop();
-	// 	if (softGTest(P, 0, a) == false)
-	// 	{
-	// 		if (a.radius < epsilon)
-	// 			Q0.push(std::pair<RATIONALINTERVAL, int>(a, n));
-	// 		else
-	// 			for(int si=1;si<3;si++)
-	// 				Q1.push(a.subdivide(si));
-	// 	}
-	// }
-	RATIONALINTERVAL a = Q1.front();
-	Q0.push(std::pair<RATIONALINTERVAL, int>(a, n));
+	Q0.push(std::pair<RATIONALINTERVAL, int>(D, n));
 
 	// main loop
 	int intersectionChecker = 0;

@@ -26,14 +26,14 @@ COMPLEXMATRIX&   operator = (const REALMATRIX& y);
 
 // Destructor: ---------------------------------
 
-~REALMATRIX();
+~COMPLEXMATRIX();
 
 // Access to matrix elements: ------------------
 
-REAL&   operator ()           (unsigned int row,
+COMPLEX&   operator ()           (unsigned int row,
                                unsigned int column) const;
 
-REAL&   element               (unsigned int row,
+COMPLEX&   element               (unsigned int row,
                                unsigned int column) const;
 
 // Standard Arithmetic: ------------------------
@@ -76,9 +76,9 @@ friend COMPLEXMATRIX ones    (unsigned int rows,
                            unsigned int columns);
 
 
-// friend REAL       maxnorm (const REALMATRIX& x);
-// friend REAL       rowsumnorm (const REALMATRIX& x);
-// friend REAL       colsumnorm (const REALMATRIX& x);
+friend REAL       maxnorm (const COMPLEXMATRIX& x);
+friend REAL       rowsumnorm (const COMPLEXMATRIX& x);
+friend REAL       colsumnorm (const COMPLEXMATRIX& x);
 
 // friend REALMATRIX solve (
 //        REALMATRIX& lside,
@@ -106,9 +106,9 @@ COMPLEXMATRIX zeroes  (unsigned int rows,
                            unsigned int columns);
 COMPLEXMATRIX ones    (unsigned int rows,
                            unsigned int columns);
-// REAL       maxnorm (const REALMATRIX& x);
-// REAL       rowsumnorm (const REALMATRIX& x);
-// REAL       colsumnorm (const REALMATRIX& x);
+REAL       maxnorm (const COMPLEXMATRIX& x);
+REAL       rowsumnorm (const COMPLEXMATRIX& x);
+REAL       colsumnorm (const COMPLEXMATRIX& x);
 // REALMATRIX solve (
 //        REALMATRIX& lside,
 //        REALMATRIX& rside,
